@@ -6,86 +6,59 @@ extension Data {
     ///
     /// - parameter hex: The hex string without any spaces; should only have [0-9A-Fa-f].
     init?(hex: String) {
-        if hex.count % 2 != 0 {
+        let digits = Array(hex.utf8)
+        guard digits.count.isMultiple(of: 2) else {
             return nil
         }
 
-        let hexArray = Array(hex)
         var bytes: [UInt8] = []
-
-        for index in stride(from: 0, to: hexArray.count, by: 2) {
-            guard let byte = UInt8("\(hexArray[index])\(hexArray[index + 1])", radix: 16) else {
+        bytes.reserveCapacity(digits.count / 2)
+        for index in stride(from: 0, to: digits.count, by: 2) {
+            guard let high = Data.nibble(digits[index]), let low = Data.nibble(digits[index + 1]) else {
                 return nil
             }
 
-            bytes.append(byte)
+            bytes.append(high << 4 | low)
         }
 
-        self.init(bytes: bytes, count: bytes.count)
+        self.init(bytes)
     }
 
-    /// Gets one byte from the given index.
+    /// Gets a big-endian integer from the given offset.
     ///
-    /// - parameter index: The index of the byte to be retrieved. Note that this should never be >= length.
+    /// - parameter type:   The integer type to be read.
+    /// - parameter offset: The offset of the integer, counted from the first byte of the receiver (also for
+    ///                     slices). Note that `offset + MemoryLayout<T>.size` should never be > count.
     ///
-    /// - returns: The byte located at position `index`.
-    func getByte(at index: Int) -> Int8 {
-        let data: Int8 = self.subdata(in: index ..< (index + 1)).withUnsafeBytes { rawPointer in
-            rawPointer.bindMemory(to: Int8.self).baseAddress!.pointee
+    /// - returns: The integer located at `offset`, in host byte order.
+    func bigEndian<T: FixedWidthInteger>(_ type: T.Type, at offset: Int) -> T {
+        precondition(offset >= 0 && offset <= self.count - MemoryLayout<T>.size, "Read past the end of Data")
+        return self.withUnsafeBytes { buffer in
+            T(bigEndian: buffer.loadUnaligned(fromByteOffset: offset, as: T.self))
         }
-
-        return data
     }
 
-    /// Gets an unsigned int (32 bits => 4 bytes) from the given index.
+    /// Appends the given integer into the receiver Data in big-endian (network) order.
     ///
-    /// - parameter index: The index of the uint to be retrieved. Note that this should never be >= length -
-    ///                    3.
-    ///
-    /// - returns: The unsigned int located at position `index`.
-    func getUnsignedInteger(at index: Int, bigEndian: Bool = true) -> UInt32 {
-        let data: UInt32 =  self.subdata(in: index ..< (index + 4)).withUnsafeBytes { rawPointer in
-            rawPointer.bindMemory(to: UInt32.self).baseAddress!.pointee
+    /// - parameter value: The integer to be appended.
+    mutating func appendBigEndian<T: FixedWidthInteger>(_ value: T) {
+        Swift.withUnsafeBytes(of: value.bigEndian) { self.append(contentsOf: $0) }
+    }
+
+    /// Value of one ASCII hex digit, or `nil` when `digit` is not [0-9A-Fa-f].
+    private static func nibble(_ digit: UInt8) -> UInt8? {
+        switch digit {
+        case UInt8(ascii: "0") ... UInt8(ascii: "9"):
+            return digit - UInt8(ascii: "0")
+
+        case UInt8(ascii: "a") ... UInt8(ascii: "f"):
+            return digit - UInt8(ascii: "a") + 10
+
+        case UInt8(ascii: "A") ... UInt8(ascii: "F"):
+            return digit - UInt8(ascii: "A") + 10
+
+        default:
+            return nil
         }
-
-        return bigEndian ? data.bigEndian : data.littleEndian
-    }
-
-    /// Gets an unsigned long integer (64 bits => 8 bytes) from the given index.
-    ///
-    /// - parameter index: The index of the ulong to be retrieved. Note that this should never be >= length -
-    ///                    7.
-    ///
-    /// - returns: The unsigned long integer located at position `index`.
-    func getUnsignedLong(at index: Int, bigEndian: Bool = true) -> UInt64 {
-        let data: UInt64 = self.subdata(in: index ..< (index + 8)).withUnsafeBytes { rawPointer in
-            rawPointer.bindMemory(to: UInt64.self).baseAddress!.pointee
-        }
-
-        return bigEndian ? data.bigEndian : data.littleEndian
-    }
-
-    /// Appends the given byte (8 bits) into the receiver Data.
-    ///
-    /// - parameter data: The byte to be appended.
-    mutating func append(byte data: Int8) {
-        var data = data
-        self.append(Data(bytes: &data, count: MemoryLayout<Int8>.size))
-    }
-
-    /// Appends the given unsigned integer (32 bits; 4 bytes) into the receiver Data.
-    ///
-    /// - parameter data: The unsigned integer to be appended.
-    mutating func append(unsignedInteger data: UInt32, bigEndian: Bool = true) {
-        var data = bigEndian ? data.bigEndian : data.littleEndian
-        self.append(Data(bytes: &data, count: MemoryLayout<UInt32>.size))
-    }
-
-    /// Appends the given unsigned long (64 bits; 8 bytes) into the receiver Data.
-    ///
-    /// - parameter data: The unsigned long to be appended.
-    mutating func append(unsignedLong data: UInt64, bigEndian: Bool = true) {
-        var data = bigEndian ? data.bigEndian : data.littleEndian
-        self.append(Data(bytes: &data, count: MemoryLayout<UInt64>.size))
     }
 }

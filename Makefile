@@ -1,26 +1,11 @@
-test-lint:
-	brew install swiftlint || true
-	swiftlint lint --strict 2>/dev/null
+lint:
+	@command -v swiftlint >/dev/null 2>&1 || brew install swiftlint
+	swiftlint lint --strict --no-cache
 
-test-iOS:
-	set -o pipefail && \
-		xcodebuild \
-		-project Kronos.xcodeproj \
-		-scheme Kronos \
-		-destination "name=iPhone 11 Pro Max" \
-		test
+test-lint: lint
 
-test-OSX:
-	set -o pipefail && \
-		xcodebuild \
-		-project Kronos.xcodeproj \
-		-scheme Kronos \
-		test
+test:
+	swift test --disable-swift-testing
 
-test-tvOS:
-	set -o pipefail && \
-		xcodebuild \
-		-project Kronos.xcodeproj \
-		-scheme Kronos \
-		-destination "platform=tvOS Simulator,name=Apple TV" \
-		test
+ios-example:
+	xcodebuild -project Example/iOS/KronosExample.xcodeproj -scheme KronosExample -destination 'generic/platform=iOS Simulator' build

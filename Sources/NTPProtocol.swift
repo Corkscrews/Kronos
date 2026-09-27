@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Exception raised when the received PDU is invalid.
@@ -42,12 +43,83 @@ enum Stratum: Int8 {
         case 1:
             self = .primary
 
-        case 0 ..< 15:
+        case 2 ... 15:
             self = .secondary
 
         default:
             self = .invalid
         }
+    }
+}
+
+/// Kiss-o'-death codes a server sends in the reference ID of a stratum 0 reply (RFC 5905 section 7.4).
+enum KissCode: Equatable {
+    /// The server denies access. The client must stop sending to it.
+    case deny
+
+    /// The server denies access for this client. The client must stop sending to it.
+    case restricted
+
+    /// The client is polling too often. It must reduce its rate to that server.
+    case rateExceeded
+
+    /// Any other code. RFC 5905 says unknown codes are informational, so the reply is dropped.
+    case other(UInt32)
+
+    init(referenceID: UInt32) {
+        switch referenceID {
+        case 0x44454e59:
+            self = .deny
+
+        case 0x52535452:
+            self = .restricted
+
+        case 0x52415445:
+            self = .rateExceeded
+
+        default:
+            self = .other(referenceID)
+        }
+    }
+}
+
+extension NTPKey {
+
+    /// Length of the digest this key's algorithm produces, in bytes.
+    var digestLength: Int {
+        switch self.algorithm {
+        case .md5:
+            return Insecure.MD5Digest.byteCount
+
+        case .sha1:
+            return Insecure.SHA1Digest.byteCount
+        }
+    }
+
+    /// Message authentication code for `message` as RFC 5905 section 7.3 defines it: the key ID followed by
+    /// the digest of the secret key concatenated with the message.
+    ///
+    /// - parameter message: The NTP header and any extension fields.
+    /// - returns: The 4-byte key ID and the digest, ready to append to the packet.
+    func messageAuthenticationCode(for message: Data) -> Data {
+        var input = self.secret
+        input.append(message)
+
+        // RFC 5905 defines MD5 as the NTP MAC, and most servers still configure MD5 keys.
+        let digest: [UInt8]
+        switch self.algorithm {
+        case .md5:
+            digest = Array(Insecure.MD5.hash(data: input))
+
+        case .sha1:
+            digest = Array(Insecure.SHA1.hash(data: input))
+        }
+
+        var mac = Data()
+        mac.reserveCapacity(4 + digest.count)
+        mac.appendBigEndian(self.id)
+        mac.append(contentsOf: digest)
+        return mac
     }
 }
 

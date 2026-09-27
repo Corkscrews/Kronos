@@ -4,7 +4,7 @@ import Foundation
 ///
 /// - IPv6: An Internet Address of type IPv6 (e.g.: '::1').
 /// - IPv4: An Internet Address of type IPv4 (e.g.: '127.0.0.1').
-enum InternetAddress: Hashable {
+enum InternetAddress: Hashable, Comparable {
     case ipv6(sockaddr_in6)
     case ipv4(sockaddr_in)
 
@@ -68,11 +68,32 @@ enum InternetAddress: Hashable {
             return Data(bytes: &address, count: MemoryLayout<sockaddr_in>.size) as CFData
         }
     }
-}
 
-/// Compare InternetAddress(es) by making sure the host representation are equal.
-func == (lhs: InternetAddress, rhs: InternetAddress) -> Bool {
-    return lhs.host == rhs.host
+    /// Compare InternetAddress(es) by making sure the host representation are equal.
+    static func == (lhs: InternetAddress, rhs: InternetAddress) -> Bool {
+        lhs.host == rhs.host
+    }
+
+    /// Numeric address order. IPv4 comes before IPv6. Ports are ignored, so this agrees with `==`.
+    static func < (lhs: InternetAddress, rhs: InternetAddress) -> Bool {
+        switch (lhs, rhs) {
+        case let (.ipv4(left), .ipv4(right)):
+            return left.sin_addr.s_addr.bigEndian < right.sin_addr.s_addr.bigEndian
+
+        case let (.ipv6(left), .ipv6(right)):
+            return withUnsafeBytes(of: left.sin6_addr) { leftBytes in
+                withUnsafeBytes(of: right.sin6_addr) { rightBytes in
+                    leftBytes.lexicographicallyPrecedes(rightBytes)
+                }
+            }
+
+        case (.ipv4, .ipv6):
+            return true
+
+        case (.ipv6, .ipv4):
+            return false
+        }
+    }
 }
 
 // MARK: - sockaddr_storage helpers

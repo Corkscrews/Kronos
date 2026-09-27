@@ -6,9 +6,14 @@ be affected by changes in the clock.
 
 ## Example app
 
-[This](https://github.com/MobileNativeFoundation/Kronos/blob/master/Example/main.swift) is an
+[This](https://github.com/Corkscrews/Kronos/blob/master/Example/main.swift) is an
 example app that displays the monotonic `Clock.now` on the left and the
 system clock (initially out of date) on the right.
+
+The same pair of clocks runs in the iOS Simulator from
+`Example/iOS/KronosExample.xcodeproj`. The project links this package locally.
+Open it in Xcode, pick an iPhone simulator, and run. The pool menu syncs
+`time.apple.com`, `time.nist.gov`, `ntp-galway.hea.net`, or `ntppool1.time.nl`.
 
 ![ascii-clock](https://cloud.githubusercontent.com/assets/232113/15371331/c24e8570-1cef-11e6-8598-428a0b5d66f9.gif)
 
@@ -60,7 +65,7 @@ pod 'Kronos'
 Add Kronos to your `Package.swift`:
 
 ```bash
-.package(name: "Kronos", url: "https://github.com/MobileNativeFoundation/Kronos.git", .upToNextMajor(from: "TAG")),
+.package(name: "Kronos", url: "https://github.com/Corkscrews/Kronos.git", .upToNextMajor(from: "TAG")),
 ```
 
 ### Bazel
@@ -72,7 +77,7 @@ http_archive(
     name = "Kronos",
     sha256 = "",
     strip_prefix = "Kronos-TAG/",
-    url = "https://github.com/MobileNativeFoundation/Kronos/archive/TAG.tar.gz",
+    url = "https://github.com/Corkscrews/Kronos/archive/TAG.tar.gz",
 )
 ```
 

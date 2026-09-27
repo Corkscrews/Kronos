@@ -1,9 +1,67 @@
-line_length:
-  - 110
+# Kronos builds as a Swift package. This config checks the style the
+# sources already follow, and leaves newer-language rules off.
+
+included:
+  - Sources
+  - Tests
+  - Example
+
+excluded:
+  - .build
+  - .swiftpm
+  - DerivedData
+
 disabled_rules:
-  - variable_name
+  # Short names (ip, lhs) and nested NTP types are part of the public API.
+  - identifier_name
   - nesting
+  # Some declarations keep the opening brace on the following line.
   - opening_brace
-  - valid_docs
+
+line_length:
+  warning: 120
+  error: 160
+  ignores_comments: true
+  ignores_urls: true
+
+file_length:
+  warning: 700
+  error: 1000
+
+type_body_length:
+  warning: 360
+  error: 500
+
+function_body_length:
+  warning: 80
+  error: 120
+
+function_parameter_count:
+  warning: 7
+  error: 10
+
 trailing_comma:
   mandatory_comma: true
+
+opt_in_rules:
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_first_not_nil
+  - contains_over_range_nil_comparison
+  - empty_count
+  - empty_string
+  - explicit_init
+  - fatal_error_message
+  - first_where
+  - identical_operands
+  - last_where
+  - redundant_nil_coalescing
+  - implicit_return
+  - sorted_imports
+  - toggle_bool
+
+implicit_return:
+  included:
+    - closure
+    - function
+    - getter
